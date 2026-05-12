@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-VOTING OSIS SMA AL-ANWAR SARANG</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #01796F;
+            --secondary: #005a52;
+            --accent: #e6f2f1;
+        }
+        body {
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            transition: background 0.5s ease-in-out;
+        }
+        .bg-custom { background-color: var(--primary) !important; color: white; }
+        .text-custom { color: var(--primary) !important; }
+        .btn-custom { background-color: var(--primary); color: white; }
+        .btn-custom:hover { background-color: var(--secondary); color: white; }
+        
+        /* CSS untuk Navigasi Halaman Utama */
+        .view-section { display: none; }
+        .active-view { display: block; }
+
+        /* CSS KHUSUS untuk Tab Admin biar gak bocor */
+        .admin-tab { display: none; }
+        .admin-tab.active-tab { display: block; }
+        
+        .card-glass {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .kandidat-container {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 20px;
+            padding-bottom: 20px;
+        }
+        .kandidat-card {
+            min-width: 350px;
+            max-width: 400px;
+            flex: 0 0 auto;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            background-color: white;
+        }
+        .kandidat-card img {
+            height: 300px; 
+            width: 100%;
+            object-fit: contain; 
+            background-color: #e9ecef;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            padding: 5px;
+        }
+        .visi-misi-box {
+            height: 150px;
+            overflow-y: auto;
+            background-color: var(--accent);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-custom shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-vote-yea me-2"></i>E-VOTING OSIS SMA AL-ANWAR SARANG</a>
+            <button class="btn btn-outline-light btn-sm" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Keluar</button>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4 px-4">
+        
+        <div id="login-view" class="view-section active-view">
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-4">
+                    <div class="card shadow card-glass border-0">
+                        <div class="card-header bg-custom text-center py-3">
+                            <h4 class="mb-0">Portal Pemilihan</h4>
+                        </div>
+                        <div class="card-body p-4">
+                            <p class="text-center text-muted mb-4">Masukkan NISN / Token yang terdaftar untuk memilih.</p>
+                            <input type="password" id="inputToken" class="form-control form-control-lg text-center mb-3" placeholder="Masukkan NISN / Token" onkeypress="cekEnter(event)">
+                            <button class="btn btn-custom w-100 btn-lg" onclick="prosesLogin()">Masuk</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirm-data-view" class="view-section">
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-6">
+                    <div class="card shadow border-0 card-glass">
+                        <div class="card-header bg-custom text-white">
+                            <h5 class="mb-0"><i class="fas fa-user-check me-2"></i>Konfirmasi Data Diri</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-bordered">
+                                <tr><th width="30%">NISN / Token</th><td id="c_nisn"></td></tr>
+                                <tr><th>Nama Lengkap</th><td id="c_nama" class="fw-bold"></td></tr>
+                                <tr><th>Kelas / Jabatan</th><td id="c_kelas"></td></tr>
+                                <tr><th>Kategori Pemilih</th><td id="c_jk"></td></tr>
+                            </table>
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i> Hak suara Anda: <strong><span id="c_jenis_osis"></span></strong>.
+                            </div>
+                            <button class="btn btn-custom w-100 btn-lg mt-2" onclick="masukBilikSuara()">Lanjut Memilih <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="voting-view" class="view-section">
+            <div class="alert alert-warning text-center shadow-sm card-glass">
+                <h3 class="mb-0">Kertas Suara: <span id="judul_voting_jk" class="text-custom fw-bold"></span></h3>
+                <div id="notif-tahap" class="badge bg-danger mt-2 px-3 py-2 fs-6">Tahap 1 dari X</div>
+                <small class="d-block mt-2">Pilih salah satu kandidat. Pilihan Anda rahasia.</small>
+            </div>
+            <div class="kandidat-container mt-4" id="kandidat-list-render"></div>
+        </div>
+
+        <div id="admin-view" class="view-section card-glass p-3 rounded">
+            <h2 class="text-custom border-bottom pb-2 mb-3"><i class="fas fa-cogs"></i> Portal Admin</h2>
+
+            <ul class="nav nav-tabs mb-4" id="adminTabs">
+                <li class="nav-item"><a class="nav-link active text-custom fw-bold" href="#" onclick="switchAdminTab('dashboard')">Laporan Realtime</a></li>
+                <li class="nav-item"><a class="nav-link text-custom" href="#" onclick="switchAdminTab('pemilih')">Data Pemilih</a></li>
+                <li class="nav-item"><a class="nav-link text-custom" href="#" onclick="switchAdminTab('paslon')">Kandidat</a></li>
+                <li class="nav-item"><a class="nav-link text-custom" href="#" onclick="switchAdminTab('pengaturan')">Pengaturan</a></li>
+            </ul>
+
+            <div id="tab-dashboard" class="admin-tab active-tab">
+                <div class="row">
+                    <div class="col-md-6"><div class="card shadow-sm mb-4"><div class="card-header bg-custom">Hasil KETUA Putra</div><div class="card-body"><canvas id="chartKetL"></canvas></div></div></div>
+                    <div class="col-md-6"><div class="card shadow-sm mb-4"><div class="card-header bg-custom">Hasil WAKIL Putra</div><div class="card-body"><canvas id="chartWakL"></canvas></div></div></div>
+                    <div class="col-md-6"><div class="card shadow-sm mb-4"><div class="card-header bg-warning text-dark">Hasil KETUA Putri</div><div class="card-body"><canvas id="chartKetP"></canvas></div></div></div>
+                    <div class="col-md-6"><div class="card shadow-sm mb-4"><div class="card-header bg-warning text-dark">Hasil WAKIL Putri</div><div class="card-body"><canvas id="chartWakP"></canvas></div></div></div>
+                </div>
+            </div>
+
+            <div id="tab-pemilih" class="admin-tab">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-custom"><i class="fas fa-file-excel"></i> Import Massal via Excel</div>
+                    <div class="card-body">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">1. Unduh Format</label>
+                                <button class="btn btn-warning w-100" onclick="downloadTemplateExcel()"><i class="fas fa-download"></i> Download Template .xlsx</button>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">2. Pilih File Excel yang sudah diisi</label>
+                                <input type="file" id="uploadExcel" class="form-control" accept=".xlsx, .xls">
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100" onclick="prosesImportExcel()"><i class="fas fa-upload"></i> Proses Import</button>
+                            </div>
+                        </div>
+                        <div class="mt-3 small text-muted">
+                            * Kolom Excel harus urut: <b>NO, NAMA, JENIS (L/P/G), KELAS, NISN</b>. (G = Guru)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-custom"><i class="fas fa-user-plus"></i> Input Manual</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-2 mb-2"><input type="text" id="inputNisnPemilih" class="form-control" placeholder="NISN/Token"></div>
+                            <div class="col-md-4 mb-2"><input type="text" id="inputNamaPemilih" class="form-control" placeholder="Nama Lengkap"></div>
+                            <div class="col-md-2 mb-2">
+                                <select id="inputJkPemilih" class="form-select">
+                                    <option value="L">Putra (L) - 2x Pilih</option>
+                                    <option value="P">Putri (P) - 2x Pilih</option>
+                                    <option value="G">Guru (G) - 4x Pilih</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2"><input type="text" id="inputKelasPemilih" class="form-control" placeholder="Kelas/Jabatan"></div>
+                            <div class="col-md-2 mb-2"><button class="btn btn-custom w-100" onclick="simpanPemilihBaru()">Tambah</button></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-custom">Database Pemilih</div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-hover table-bordered text-center align-middle">
+                            <thead class="table-light">
+                                <tr><th>No</th><th>NISN/Token</th><th>Nama</th><th>Kategori</th><th>Kelas</th><th>Status Vote</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody id="table-pemilih-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-paslon" class="admin-tab">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-custom">Input Kandidat Baru</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="fw-bold">Posisi & Kategori</label>
+                                <select id="inputKategori" class="form-select">
+                                    <option value="KL">Ketua Putra</option>
+                                    <option value="WL">Wakil Putra</option>
+                                    <option value="KP">Ketua Putri</option>
+                                    <option value="WP">Wakil Putri</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3"><label class="fw-bold">Nama Kandidat</label><input type="text" id="inputNamaPaslon" class="form-control"></div>
+                            <div class="col-md-5 mb-3"><label class="fw-bold">URL Foto</label><input type="text" id="inputFotoPaslon" class="form-control" placeholder="https://..."></div>
+                            <div class="col-md-6 mb-3"><label class="fw-bold">Visi</label><textarea id="inputVisi" class="form-control" rows="4"></textarea></div>
+                            <div class="col-md-6 mb-3"><label class="fw-bold">Misi (Enter otomatis nomor)</label><textarea id="inputMisi" class="form-control" rows="4"></textarea></div>
+                            <div class="col-md-12 text-end"><button class="btn btn-custom" onclick="simpanPaslonBaru()">Simpan Kandidat</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3"><h5>Ketua Putra</h5><div id="admin-list-kl"></div></div>
+                    <div class="col-md-3"><h5>Wakil Putra</h5><div id="admin-list-wl"></div></div>
+                    <div class="col-md-3"><h5>Ketua Putri</h5><div id="admin-list-kp"></div></div>
+                    <div class="col-md-3"><h5>Wakil Putri</h5><div id="admin-list-wp"></div></div>
+                </div>
+            </div>
+
+            <div id="tab-pengaturan" class="admin-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-custom"><i class="fas fa-image"></i> Ganti Background</div>
+                            <div class="card-body">
+                                <input type="text" id="inputBgUrl" class="form-control mb-2" placeholder="URL Gambar Background">
+                                <button class="btn btn-custom w-100" onclick="terapkanBackground()">Terapkan Background</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-danger mb-4">
+                            <div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> Zona Berbahaya (Reset Data)</div>
+                            <div class="card-body">
+                                <p class="text-muted mb-2">Hapus seluruh data (Pemilih, Kandidat, dan Suara) untuk memulai sesi pemilihan baru.</p>
+                                <button class="btn btn-outline-danger w-100 fw-bold" onclick="resetSemuaData()"><i class="fas fa-trash-alt"></i> RESET SEMUA DATA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let voters = [];
+        // 4 Wadah Array untuk pemisahan Ketua dan Wakil
+        let ketL = []; let wakL = [];
+        let ketP = []; let wakP = [];
+        let currentUser = null;
+        let cKL = null, cWL = null, cKP = null, cWP = null;
+
+        // --- DETEKSI ENTER SAAT LOGIN ---
+        function cekEnter(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                prosesLogin();
+            }
+        }
+
+        // --- AUTO-NUMBERING MISI ---
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputMisi = document.getElementById("inputMisi");
+            inputMisi.addEventListener("focus", function() {
+                if(this.value.trim() === "") this.value = "1. ";
+            });
+            inputMisi.addEventListener("keydown", function(e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const n = this.value.split('\n').length + 1;
+                    this.value += "\n" + n + ". ";
+                }
+            });
+        });
+
+        // --- RESET DATA ---
+        function resetSemuaData() {
+            if (confirm("PERINGATAN!\nAnda yakin ingin menghapus seluruh Data?")) {
+                if (prompt("Ketik kata 'HAPUS' (tanpa kutip):") === "HAPUS") {
+                    voters = []; ketL = []; wakL = []; ketP = []; wakP = [];
+                    renderTablePemilih(); renderAdminPaslonList(); renderCharts();
+                    alert("Semua data berhasil dikosongkan!");
+                } else { alert("Kata kunci salah."); }
+            }
+        }
+
+        // --- NAVIGASI HALAMAN UTAMA ---
+        function showView(id) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active-view'));
+            document.getElementById(id).classList.add('active-view');
+        }
+
+        // --- NAVIGASI TAB ADMIN (DI-FIX) ---
+        function switchAdminTab(name) {
+            document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active-tab'));
+            document.getElementById(`tab-${name}`).classList.add('active-tab');
+            
+            document.querySelectorAll('#adminTabs .nav-link').forEach(el => el.classList.remove('active', 'fw-bold'));
+            event.target.classList.add('active', 'fw-bold');
+            
+            if(name === 'pemilih') renderTablePemilih();
+            if(name === 'paslon') renderAdminPaslonList();
+            if(name === 'dashboard') renderCharts();
+        }
+
+        // --- EXCEL LOGIC ---
+        function downloadTemplateExcel() {
+            const h = [["NO", "NAMA", "JENIS (L/P/G)", "KELAS", "NISN"]];
+            const ws = XLSX.utils.aoa_to_sheet(h);
+            ws['!cols'] = [{wch:10}, {wch:35}, {wch:20}, {wch:15}, {wch:20}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Data_Pemilih");
+            XLSX.writeFile(wb, "Template_E-Voting.xlsx");
+        }
+
+        function prosesImportExcel() {
+            const fileInput = document.getElementById('uploadExcel');
+            if (!fileInput.files[0]) return alert("Pilih file excel!");
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const ws = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(ws);
+                if(jsonData.length === 0) return alert("Excel kosong!");
+
+                jsonData.forEach(row => {
+                    const nisnStr = String(row["NISN"] || "");
+                    const jenisRaw = String(row["JENIS (L/P/G)"] || row["JENIS KELAMIN (L/P)"] || "").toUpperCase().trim();
+                    const jkFix = ['L','P','G'].includes(jenisRaw) ? jenisRaw : 'L';
+
+                    if(nisnStr && !voters.find(v => v.nisn === nisnStr)) {
+                        voters.push({ nisn: nisnStr, nama: row["NAMA"] || "Tanpa Nama", jk: jkFix, kelas: row["KELAS"] || "-", is_voted: false });
+                    }
+                });
+                alert("Data diimport!");
+                renderTablePemilih(); fileInput.value = ""; 
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        // --- LOGIN & KONFIRMASI ---
+        function prosesLogin() {
+            const t = document.getElementById("inputToken").value.trim();
+            if (t === "ADMIN26") { showView('admin-view'); renderCharts(); return; }
+            const u = voters.find(v => v.nisn === t);
+            if (u) {
+                if (u.is_voted) return alert("Hak suara sudah digunakan sepenuhnya!");
+                
+                currentUser = u;
+                // Inisialisasi state voting per user
+                currentUser.vKL = currentUser.vKL || false;
+                currentUser.vWL = currentUser.vWL || false;
+                currentUser.vKP = currentUser.vKP || false;
+                currentUser.vWP = currentUser.vWP || false;
+
+                document.getElementById("c_nisn").innerText = u.nisn;
+                document.getElementById("c_nama").innerText = u.nama;
+                document.getElementById("c_kelas").innerText = u.kelas;
+                
+                if(u.jk === 'L') {
+                    document.getElementById("c_jk").innerText = 'Siswa Putra';
+                    document.getElementById("c_jenis_osis").innerText = 'Ketua & Wakil Putra (2x Pilih)';
+                } else if(u.jk === 'P') {
+                    document.getElementById("c_jk").innerText = 'Siswi Putri';
+                    document.getElementById("c_jenis_osis").innerText = 'Ketua & Wakil Putri (2x Pilih)';
+                } else {
+                    document.getElementById("c_jk").innerText = 'Guru / Staf';
+                    document.getElementById("c_jenis_osis").innerText = 'Semua Ketua & Wakil (4x Pilih)';
+                }
+                
+                showView('confirm-data-view');
+            } else { alert("NISN/Token tidak terdaftar!"); }
+        }
+
+        // --- LOGIKA MULTI-STEP BILIK SUARA ---
+        function masukBilikSuara() {
+            let targetJudul = "", dataKandidat = [], teksTahap = "";
+
+            if (currentUser.jk === 'L') {
+                if (!currentUser.vKL) { targetJudul = "CALON KETUA PUTRA"; dataKandidat = ketL; teksTahap = "Tahap 1 dari 2 (Ketua Putra)"; }
+                else if (!currentUser.vWL) { targetJudul = "CALON WAKIL PUTRA"; dataKandidat = wakL; teksTahap = "Tahap 2 dari 2 (Wakil Putra)"; }
+            } else if (currentUser.jk === 'P') {
+                if (!currentUser.vKP) { targetJudul = "CALON KETUA PUTRI"; dataKandidat = ketP; teksTahap = "Tahap 1 dari 2 (Ketua Putri)"; }
+                else if (!currentUser.vWP) { targetJudul = "CALON WAKIL PUTRI"; dataKandidat = wakP; teksTahap = "Tahap 2 dari 2 (Wakil Putri)"; }
+            } else if (currentUser.jk === 'G') {
+                if (!currentUser.vKL) { targetJudul = "CALON KETUA PUTRA"; dataKandidat = ketL; teksTahap = "Tahap 1 dari 4 (Ketua Putra)"; }
+                else if (!currentUser.vWL) { targetJudul = "CALON WAKIL PUTRA"; dataKandidat = wakL; teksTahap = "Tahap 2 dari 4 (Wakil Putra)"; }
+                else if (!currentUser.vKP) { targetJudul = "CALON KETUA PUTRI"; dataKandidat = ketP; teksTahap = "Tahap 3 dari 4 (Ketua Putri)"; }
+                else if (!currentUser.vWP) { targetJudul = "CALON WAKIL PUTRI"; dataKandidat = wakP; teksTahap = "Tahap 4 dari 4 (Wakil Putri)"; }
+            }
+
+            if(dataKandidat.length === 0) { 
+                alert(`Data kandidat untuk ${targetJudul} belum diisi Admin!`); 
+                return logout(); 
+            }
+            
+            document.getElementById("judul_voting_jk").innerText = targetJudul;
+            document.getElementById("notif-tahap").innerText = teksTahap;
+            
+            const c = document.getElementById("kandidat-list-render");
+            c.innerHTML = "";
+            
+            dataKandidat.forEach(p => {
+                c.innerHTML += `
+                    <div class="card kandidat-card shadow-sm border-0">
+                        <img src="${p.foto}" onerror="this.src='https://via.placeholder.com/300x400?text=Foto+Kandidat'">
+                        <div class="card-body d-flex flex-column">
+                            <h1 class="text-center text-custom fw-bold border-bottom mb-3">0${p.no}</h1>
+                            <h4 class="text-center fw-bold">${p.nama}</h4>
+                            <div class="visi-misi-box mt-2 mb-3"><strong>Visi:</strong><br>${p.visi.replace(/\n/g, '<br>')}<br><br><strong>Misi:</strong><br>${p.misi.replace(/\n/g, '<br>')}</div>
+                            <button class="btn btn-custom btn-lg w-100 fw-bold" onclick="submitVote(${p.id})">COBLOS 0${p.no}</button>
+                        </div>
+                    </div>`;
+            });
+            showView('voting-view');
+        }
+
+        function submitVote(id) {
+            if(confirm("Yakin dengan pilihan ini?")) {
+                let lanjut = false;
+
+                if (currentUser.jk === 'L') {
+                    if (!currentUser.vKL) { ketL.find(x => x.id === id).suara++; currentUser.vKL = true; lanjut = true; }
+                    else if (!currentUser.vWL) { wakL.find(x => x.id === id).suara++; currentUser.vWL = true; }
+                } else if (currentUser.jk === 'P') {
+                    if (!currentUser.vKP) { ketP.find(x => x.id === id).suara++; currentUser.vKP = true; lanjut = true; }
+                    else if (!currentUser.vWP) { wakP.find(x => x.id === id).suara++; currentUser.vWP = true; }
+                } else if (currentUser.jk === 'G') {
+                    if (!currentUser.vKL) { ketL.find(x => x.id === id).suara++; currentUser.vKL = true; lanjut = true; }
+                    else if (!currentUser.vWL) { wakL.find(x => x.id === id).suara++; currentUser.vWL = true; lanjut = true; }
+                    else if (!currentUser.vKP) { ketP.find(x => x.id === id).suara++; currentUser.vKP = true; lanjut = true; }
+                    else if (!currentUser.vWP) { wakP.find(x => x.id === id).suara++; currentUser.vWP = true; }
+                }
+
+                // Cek apakah tugas milih sudah selesai semua
+                let selesai = false;
+                if(currentUser.jk === 'L' && currentUser.vKL && currentUser.vWL) selesai = true;
+                if(currentUser.jk === 'P' && currentUser.vKP && currentUser.vWP) selesai = true;
+                if(currentUser.jk === 'G' && currentUser.vKL && currentUser.vWL && currentUser.vKP && currentUser.vWP) selesai = true;
+
+                if (selesai) {
+                    voters.find(v => v.nisn === currentUser.nisn).is_voted = true;
+                    alert("Seluruh pilihan Anda telah sah tersimpan. Terima Kasih!");
+                    logout();
+                } else if (lanjut) {
+                    alert("Suara tersimpan. Silahkan lanjut ke pemilihan tahap berikutnya.");
+                    masukBilikSuara();
+                }
+            }
+        }
+
+        // --- ADMIN PEMILIH ---
+        function simpanPemilihBaru() {
+            const n = document.getElementById("inputNisnPemilih").value;
+            const nm = document.getElementById("inputNamaPemilih").value;
+            const jk = document.getElementById("inputJkPemilih").value;
+            const k = document.getElementById("inputKelasPemilih").value;
+            if(n && nm) {
+                voters.push({nisn:n, nama:nm, jk:jk, kelas:k, is_voted:false});
+                renderTablePemilih();
+                document.getElementById("inputNisnPemilih").value = "";
+                document.getElementById("inputNamaPemilih").value = "";
+            }
+        }
+
+        function renderTablePemilih() {
+            const b = document.getElementById("table-pemilih-body");
+            b.innerHTML = voters.length ? "" : "<tr><td colspan='7'>Data kosong</td></tr>";
+            voters.forEach((v, i) => {
+                let lbl = v.jk === 'L' ? 'Putra' : (v.jk === 'P' ? 'Putri' : 'Guru');
+                b.innerHTML += `<tr><td>${i+1}</td><td>${v.nisn}</td><td>${v.nama}</td><td>${lbl}</td><td>${v.kelas}</td><td>${v.is_voted ? '✅ Selesai' : '❌ Belum'}</td><td><button class="btn btn-sm btn-danger" onclick="voters=voters.filter(x=>x.nisn!=='${v.nisn}');renderTablePemilih()">Hapus</button></td></tr>`;
+            });
+        }
+
+        // --- ADMIN KANDIDAT ---
+        function simpanPaslonBaru() {
+            const kat = document.getElementById("inputKategori").value;
+            const nm = document.getElementById("inputNamaPaslon").value;
+            const ft = document.getElementById("inputFotoPaslon").value;
+            const vs = document.getElementById("inputVisi").value;
+            const ms = document.getElementById("inputMisi").value;
+            
+            let target;
+            if(kat === 'KL') target = ketL;
+            else if(kat === 'WL') target = wakL;
+            else if(kat === 'KP') target = ketP;
+            else if(kat === 'WP') target = wakP;
+
+            if(!nm) return alert("Isi nama kandidat!");
+            
+            target.push({id:Date.now(), no:target.length+1, nama:nm, foto:ft, visi:vs, misi:ms, suara:0});
+            renderAdminPaslonList();
+            
+            document.getElementById("inputNamaPaslon").value = "";
+            document.getElementById("inputFotoPaslon").value = "";
+            document.getElementById("inputVisi").value = "";
+            document.getElementById("inputMisi").value = "";
+        }
+
+        function renderAdminPaslonList() {
+            const r = (arr, id, kat) => {
+                const el = document.getElementById(id); el.innerHTML = "";
+                arr.forEach(p => el.innerHTML += `<div class="p-2 border rounded mb-2 small d-flex justify-content-between align-items-center"><span><b>0${p.no}</b> - ${p.nama}</span> <button onclick="hapusPaslon(${p.id}, '${kat}')" class="btn btn-sm btn-outline-danger">Hapus</button></div>`);
+            };
+            r(ketL, "admin-list-kl", "KL"); r(wakL, "admin-list-wl", "WL");
+            r(ketP, "admin-list-kp", "KP"); r(wakP, "admin-list-wp", "WP");
+        }
+
+        function hapusPaslon(id, kat) {
+            let trg;
+            if(kat==='KL') trg = ketL; else if(kat==='WL') trg = wakL; else if(kat==='KP') trg = ketP; else trg = wakP;
+            
+            let idx = trg.findIndex(p => p.id === id);
+            trg.splice(idx, 1);
+            trg.forEach((p, i) => p.no = i + 1);
+            renderAdminPaslonList();
+        }
+
+        // --- DASHBOARD CHARTS ---
+        function renderCharts() {
+            const setup = (ctx, arr, label, col) => {
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: arr.length ? arr.map(p => "0"+p.no+" "+p.nama) : ["Kosong"], datasets: [{label: label, data: arr.length ? arr.map(p => p.suara) : [0], backgroundColor: col}]},
+                    options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }}}}
+                });
+            };
+            if(cKL) cKL.destroy(); if(cWL) cWL.destroy(); if(cKP) cKP.destroy(); if(cWP) cWP.destroy();
+            cKL = setup(document.getElementById('chartKetL'), ketL, 'Ketua Putra', '#01796F');
+            cWL = setup(document.getElementById('chartWakL'), wakL, 'Wakil Putra', '#005a52');
+            cKP = setup(document.getElementById('chartKetP'), ketP, 'Ketua Putri', '#ffc107');
+            cWP = setup(document.getElementById('chartWakP'), wakP, 'Wakil Putri', '#ff9800');
+        }
+
+        function logout() { currentUser = null; document.getElementById("inputToken").value = ""; showView('login-view'); }
+        function terapkanBackground() { document.body.style.backgroundImage = `url('${document.getElementById("inputBgUrl").value}')`; }
+    </script>
+</body>
+</html>
